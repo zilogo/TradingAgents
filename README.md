@@ -47,7 +47,7 @@
 
 <div align="center">
 
-🚀 [TradingAgents](#tradingagents-framework) | ⚡ [Installation & CLI](#installation-and-cli) | 🎬 [Demo](https://www.youtube.com/watch?v=90gr5lwjIho) | 📦 [Package Usage](#tradingagents-package) | 🤝 [Contributing](#contributing) | 📄 [Citation](#citation)
+🚀 [TradingAgents](#tradingagents-framework) | ⚡ [Installation & CLI](#installation-and-cli) | 🌐 [API Service](#api-service) | 🤖 [Claude Code Skill](#claude-code-skill) | 🎬 [Demo](https://www.youtube.com/watch?v=90gr5lwjIho) | 📦 [Package Usage](#tradingagents-package) | 🤝 [Contributing](#contributing) | 📄 [Citation](#citation)
 
 </div>
 
@@ -157,6 +157,116 @@ An interface will appear showing results as they load, letting you track the age
 <p align="center">
   <img src="assets/cli/cli_transaction.png" width="100%" style="display: inline-block; margin: 0 2%;">
 </p>
+
+## API Service
+
+TradingAgents provides a REST API service with **async task mode** — submit analysis tasks and poll for progress, supporting multi-user concurrent access.
+
+### Quick Start
+
+1. Configure environment variables in `.env`:
+
+```bash
+# Required
+OPENAI_API_KEY=sk-xxx                       # LLM API key
+TRADING_API_TOKEN=your-secret-token         # API auth token (comma-separated for multiple)
+
+# Optional (with defaults shown)
+TRADING_API_HOST=0.0.0.0
+TRADING_API_PORT=8080
+TRADING_LLM_PROVIDER=openai
+TRADING_BACKEND_URL=https://api.aitokencloud.com/v1
+TRADING_DEEP_LLM=glm-5-fp8
+TRADING_QUICK_LLM=glm-5-fp8
+TRADING_MAX_DEBATE_ROUNDS=1
+TRADING_MAX_RISK_ROUNDS=1
+TRADING_VENDOR_STOCK=alpha_vantage          # alpha_vantage / yfinance
+TRADING_VENDOR_INDICATORS=alpha_vantage
+TRADING_VENDOR_FUNDAMENTALS=alpha_vantage
+TRADING_VENDOR_NEWS=alpha_vantage
+```
+
+2. Start the service:
+
+```bash
+uvicorn api.server:app --host 0.0.0.0 --port 8080
+```
+
+### API Endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/api/v1/analyze` | Bearer Token | Submit analysis task → 202 + task_id |
+| `GET` | `/api/v1/tasks/{task_id}` | None | Query task status & result |
+| `GET` | `/api/v1/tasks` | Bearer Token | List all tasks |
+| `POST` | `/api/v1/tasks/{task_id}/cancel` | None | Cancel a running task |
+| `GET` | `/api/v1/health` | None | Health check |
+
+### Usage Example
+
+```bash
+# 1. Submit analysis task
+TASK_RESPONSE=$(curl -s -X POST http://localhost:8080/api/v1/analyze \
+  -H "Authorization: Bearer your-secret-token" \
+  -H "Content-Type: application/json" \
+  -d '{"ticker":"NVDA","date":"2025-03-05"}')
+
+TASK_ID=$(echo "$TASK_RESPONSE" | jq -r '.task_id')
+
+# 2. Poll for progress (every 15s)
+while true; do
+  RESULT=$(curl -s "http://localhost:8080/api/v1/tasks/$TASK_ID")
+  STATUS=$(echo "$RESULT" | jq -r '.status')
+  STAGE=$(echo "$RESULT" | jq -r '.current_stage_label')
+  PROGRESS=$(echo "$RESULT" | jq -r '.progress')
+  echo "[$STATUS] $PROGRESS — $STAGE"
+  [ "$STATUS" = "completed" ] || [ "$STATUS" = "failed" ] && break
+  sleep 15
+done
+
+# 3. View result
+echo "$RESULT" | jq '.result'
+```
+
+### Progress Stages
+
+During analysis, the `current_stage_label` field tracks pipeline progress:
+
+| Progress | Stage |
+|----------|-------|
+| 1/6 | 📈 Market analysis |
+| 2/6 | 💬 Social media sentiment |
+| 3/6 | 📰 News analysis |
+| 4/6 | 📋 Fundamentals analysis |
+| 5/6 | ⚖️ Investment debate & trading plan |
+| 6/6 | 🛡️ Risk assessment & final decision |
+
+## Claude Code Skill
+
+TradingAgents includes a [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill for interactive stock analysis directly from the terminal.
+
+### Setup
+
+1. Ensure the API service is running (see [API Service](#api-service) above).
+2. The skill is located at `.claude/skills/stock-analyst/SKILL.md` and is auto-detected by Claude Code.
+
+### Usage
+
+In Claude Code, simply ask about any stock:
+
+```
+> 帮我分析一下英伟达
+> AAPL 该买吗？
+> 只看技术面分析 TSLA
+> /stock-analyst NVDA
+```
+
+Claude Code will automatically:
+1. Submit the analysis task to the API
+2. Poll progress every 15 seconds, showing the current stage
+3. Format the completed result as a structured Markdown report
+
+---
 
 ## TradingAgents Package
 
