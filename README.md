@@ -206,7 +206,7 @@ uvicorn api.server:app --host 0.0.0.0 --port 8080
 
 ```bash
 # 1. Submit analysis task
-TASK_RESPONSE=$(curl -s -X POST http://localhost:8080/api/v1/analyze \
+TASK_RESPONSE=$(curl -s -X POST http://172.16.13.58:8080/api/v1/analyze \
   -H "Authorization: Bearer your-secret-token" \
   -H "Content-Type: application/json" \
   -d '{"ticker":"NVDA","date":"2025-03-05"}')
@@ -215,7 +215,7 @@ TASK_ID=$(echo "$TASK_RESPONSE" | jq -r '.task_id')
 
 # 2. Poll for progress (every 15s)
 while true; do
-  RESULT=$(curl -s "http://localhost:8080/api/v1/tasks/$TASK_ID")
+  RESULT=$(curl -s "http://172.16.13.58:8080/api/v1/tasks/$TASK_ID")
   STATUS=$(echo "$RESULT" | jq -r '.status')
   STAGE=$(echo "$RESULT" | jq -r '.current_stage_label')
   PROGRESS=$(echo "$RESULT" | jq -r '.progress')

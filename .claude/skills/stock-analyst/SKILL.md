@@ -35,6 +35,15 @@ The analysis pipeline involves:
 | `POST` | `/api/v1/tasks/{task_id}/cancel` | None | Cancel a running task |
 | `GET` | `/api/v1/health` | None | Health check |
 
+## Configuration
+
+| Variable | Value | Description |
+|----------|-------|-------------|
+| `API_BASE` | `http://172.16.13.58:8080` | API service base URL |
+| `TOKEN` | *(from user or env)* | Bearer token for authentication |
+
+> All URLs below use `${API_BASE}` as prefix. If the server address changes, only update the table above.
+
 ## Authentication
 
 Include a Bearer token in the `Authorization` header for endpoints that require it:
@@ -61,7 +70,7 @@ JSON body for `POST /api/v1/analyze`:
 ### Step 1: Pre-flight Check
 
 ```bash
-curl -s http://localhost:8080/api/v1/health
+curl -s ${API_BASE}/api/v1/health
 ```
 
 Expected: `{"status":"ok","service":"TradingAgents API","version":"0.2.0"}`
@@ -71,7 +80,7 @@ If the health check fails, inform the user the API service is not running.
 ### Step 2: Submit Analysis Task
 
 ```bash
-TASK_RESPONSE=$(curl -s -X POST http://localhost:8080/api/v1/analyze \
+TASK_RESPONSE=$(curl -s -X POST ${API_BASE}/api/v1/analyze \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"ticker":"<TICKER>","date":"<YYYY-MM-DD>"}')
@@ -95,7 +104,7 @@ Poll every 15 seconds until `status` is `"completed"` or `"failed"`:
 
 ```bash
 while true; do
-  RESULT=$(curl -s "http://localhost:8080/api/v1/tasks/$TASK_ID")
+  RESULT=$(curl -s "${API_BASE}/api/v1/tasks/$TASK_ID")
   STATUS=$(echo "$RESULT" | jq -r '.status')
   STAGE=$(echo "$RESULT" | jq -r '.current_stage_label')
   PROGRESS=$(echo "$RESULT" | jq -r '.progress')
@@ -114,7 +123,7 @@ echo "$RESULT" | jq '.'
 ### Step 4 (Optional): Cancel a Task
 
 ```bash
-curl -s -X POST "http://localhost:8080/api/v1/tasks/$TASK_ID/cancel"
+curl -s -X POST "${API_BASE}/api/v1/tasks/$TASK_ID/cancel"
 ```
 
 > Note: Cancellation takes effect between graph nodes. The currently executing LLM call will finish before the task stops.
